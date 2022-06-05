@@ -14,7 +14,6 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
-import org.apache.tomcat.util.http.fileupload.impl.FileSizeLimitExceededException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
@@ -104,7 +103,7 @@ public class FileUploadController {
 	}
 	
 	@PostMapping("/imagetopdf")
-	public String ImageToPdf(@RequestParam("file") MultipartFile multipartfile) throws IOException, DocumentException,FileSizeLimitExceededException  {
+	public String ImageToPdf(@RequestParam("file") MultipartFile multipartfile) throws IOException, DocumentException  {
 		//System.out.println(PageSize.A4.getWidth());
 		long size = multipartfile.getSize();
 		int maxsize = 7340032;
