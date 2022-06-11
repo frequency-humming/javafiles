@@ -15,12 +15,14 @@ import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 import org.apache.pdfbox.tools.imageio.ImageIOUtil;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.itextpdf.text.Document;
@@ -35,22 +37,19 @@ import com.itextpdf.tool.xml.XMLWorkerHelper;
 public class FileUploadController {
 
 	@PostMapping("/uploadFile")
-	public ResponseEntity<FileUploadResponse> uploadFile(
-		@RequestParam("file") MultipartFile multipartFile) throws IOException {
+	public  ResponseEntity<FileUploadResponse> uploadFile(@RequestParam("file") MultipartFile multipartFile) throws IOException {
 	    
 	    String fileName = StringUtils.cleanPath(multipartFile.getOriginalFilename());
 	    System.out.println(fileName);
 	    long size = multipartFile.getSize();
 	    System.out.println(size);
 	    String filecode = FileUploadUtil.saveFile(fileName, multipartFile);
-	    //call the PDF to image method
-	    uploadImage(filecode);
 	    FileUploadResponse response = new FileUploadResponse();
 	    response.setFileName(fileName);
 	    response.setSize(size);
 	    response.setDownloadUri("/downloadFile/" + filecode);
 	    
-	    return new ResponseEntity<>(response, HttpStatus.OK); 
+	    return new ResponseEntity<>(response, HttpStatus.OK);
 	}
 	@PostMapping("/htmltoPDF")
 	public String transformPDF() throws IOException {
@@ -89,28 +88,44 @@ public class FileUploadController {
 			System.out.println("error"+e);
 		}   
 	}
-	
-	public void uploadImage(String filecode) throws IOException {
+	@PostMapping(value="/pdftoimage",produces = MediaType.IMAGE_JPEG_VALUE)
+	public byte[] pdfToImage(@RequestParam("file") MultipartFile multipartFile) throws IOException {
+	    
+	    String fileName = StringUtils.cleanPath(multipartFile.getOriginalFilename());
+	    System.out.println(fileName);
+	    long size = multipartFile.getSize();
+	    System.out.println(size);
+	    String filecode = FileUploadUtil.saveFile(fileName, multipartFile);
+	    //call the PDF to image method
+	    byte[] image = uploadImage(filecode);
+	    return image;
+	}
+	public byte[] uploadImage(String filecode) throws IOException {
 		
 	    File file = new File("Files-Upload/pdf/"+filecode);
 	    PDDocument document = PDDocument.load(file);
 	    PDFRenderer pdfRenderer = new PDFRenderer(document);
 	    Path outputPath = Paths.get("output/pdftoimage/"+filecode);
+	    byte[] fileContent;
+	    
 	    if (!Files.exists(outputPath)) {
             Files.createDirectories(outputPath);
         }
 	    for(int page = 0; page < document.getNumberOfPages(); ++page) {
 	    	BufferedImage bim = pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB);
-	    	ImageIOUtil.writeImage(bim, String.format("output/pdftoimage/"+filecode+"/"+"pdf-%d.%s", page + 1, ".jpg"), 300);
+	    	ImageIOUtil.writeImage(bim, String.format("output/pdftoimage/"+filecode+"/"+"pdf-%d.%s", page + 1, "jpg"), 300);
 	    }
 	    document.close();
+	    fileContent = Files.readAllBytes(Paths.get("output/pdftoimage/"+filecode+"/"+"pdf-1.jpg"));
+	    return fileContent;
 	}
 	
-	@PostMapping("/imagetopdf")
-	public String ImageToPdf(@RequestParam("file") MultipartFile multipartfile) throws IOException, DocumentException  {
+	@PostMapping(value="/imagetopdf",produces = MediaType.APPLICATION_PDF_VALUE)
+	public byte[] ImageToPdf(@RequestParam("file") MultipartFile multipartfile) throws IOException, DocumentException  {
 		//System.out.println(PageSize.A4.getWidth());
 		long size = multipartfile.getSize();
 		int maxsize = 7340032;
+		String output = null;
 		
 		Path uploadPath = Paths.get("Files-Upload/images");
 		System.out.println("path is :"+uploadPath);
@@ -118,7 +133,8 @@ public class FileUploadController {
 		System.out.println("filename is :"+fileName);
 		
 		if(size > maxsize) {
-			return "file must be smaller that 7mb";
+			//return "file must be smaller that 7mb";
+			throw new MaxUploadSizeExceededException(maxsize);
 		}
 		try (InputStream inputStream = multipartfile.getInputStream()) {
 	        Path filePath = uploadPath.resolve(fileName);
@@ -129,7 +145,7 @@ public class FileUploadController {
 			img.scaleToFit(400, 400);
 			img.setAlignment(Element.ALIGN_CENTER);
 			Document document = new Document();
-			String output = "output/imagestopdf/"+fileName+".pdf";
+			output = "output/imagestopdf/"+fileName+".pdf";
 			FileOutputStream fos = new FileOutputStream(output);
 			PdfWriter writer = PdfWriter.getInstance(document, fos);
 			System.out.println("past the pdf writer");
@@ -141,7 +157,8 @@ public class FileUploadController {
 		} catch (IOException | DocumentException e) {
 			System.out.println("In the exception "+e);
 		}
-		return "Image Converted Successfully";			
+		byte[] fileContent = Files.readAllBytes(Paths.get(output));
+		return fileContent;	
 	}
 	
 }
