@@ -12,9 +12,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 public class FileUploadUtil {
 	
-	public static String saveFile(String fileName, MultipartFile multipartFile)
-            throws IOException {
-        Path uploadPath = Paths.get("Files-Upload");
+	public static String saveFile(String fileName, MultipartFile multipartFile) throws IOException {
+        Path uploadPath = Paths.get("Files-Upload/pdf");
           
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
