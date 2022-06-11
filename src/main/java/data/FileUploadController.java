@@ -92,12 +92,16 @@ public class FileUploadController {
 	
 	public void uploadImage(String filecode) throws IOException {
 		
-	    File file = new File("Files-Upload/"+filecode);
+	    File file = new File("Files-Upload/pdf/"+filecode);
 	    PDDocument document = PDDocument.load(file);
 	    PDFRenderer pdfRenderer = new PDFRenderer(document);
+	    Path outputPath = Paths.get("output/pdftoimage/"+filecode);
+	    if (!Files.exists(outputPath)) {
+            Files.createDirectories(outputPath);
+        }
 	    for(int page = 0; page < document.getNumberOfPages(); ++page) {
 	    	BufferedImage bim = pdfRenderer.renderImageWithDPI(page, 300, ImageType.RGB);
-	    	ImageIOUtil.writeImage(bim, String.format("output/pdf-%d.%s", page + 1, ".jpg"), 300);
+	    	ImageIOUtil.writeImage(bim, String.format("output/pdftoimage/"+filecode+"/"+"pdf-%d.%s", page + 1, ".jpg"), 300);
 	    }
 	    document.close();
 	}
@@ -108,7 +112,7 @@ public class FileUploadController {
 		long size = multipartfile.getSize();
 		int maxsize = 7340032;
 		
-		Path uploadPath = Paths.get("Files-Upload");
+		Path uploadPath = Paths.get("Files-Upload/images");
 		System.out.println("path is :"+uploadPath);
 		String fileName = StringUtils.cleanPath(multipartfile.getOriginalFilename());
 		System.out.println("filename is :"+fileName);
@@ -121,11 +125,11 @@ public class FileUploadController {
 	        Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
 	            
 			System.out.println("in the try method");
-			Image img = Image.getInstance("Files-Upload/"+fileName);
+			Image img = Image.getInstance("Files-Upload/images/"+fileName);
 			img.scaleToFit(400, 400);
 			img.setAlignment(Element.ALIGN_CENTER);
 			Document document = new Document();
-			String output = "output/images/transforming.pdf";
+			String output = "output/imagestopdf/"+fileName+".pdf";
 			FileOutputStream fos = new FileOutputStream(output);
 			PdfWriter writer = PdfWriter.getInstance(document, fos);
 			System.out.println("past the pdf writer");
@@ -137,8 +141,7 @@ public class FileUploadController {
 		} catch (IOException | DocumentException e) {
 			System.out.println("In the exception "+e);
 		}
-		return "Image Converted Successfully";
-			
+		return "Image Converted Successfully";			
 	}
 	
 }
